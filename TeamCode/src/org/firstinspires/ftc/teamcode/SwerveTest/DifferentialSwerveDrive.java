@@ -187,19 +187,23 @@ public class DifferentialSwerveDrive implements Drive {
 
 	private void move( Vector2d move, double rotate ) {
 		DecimalFormat decimalFormat = new DecimalFormat( "0.000" );
+		rotate /= 2;
+		rotate = 0;
 
 		double moveX = move.getX( );
 		double moveY = move.getY( );
 
-		double angle = move.angle( );
+		double heading = move.angle( );
 
-		System.out.println( "angle: " + Math.toDegrees( angle ) );
+		System.out.println( "heading: " + Math.toDegrees( heading ) );
 
-		// if target angle
-		double leftTargetHeading = angle / rotate ;
-		double rightTargetHeading = angle;
+		// if target heading
+		double leftTargetHeading = heading - heading * Math.abs( rotate );
+		double rightTargetHeading = heading + heading * Math.abs( rotate );
+//		System.out.println( "leftTargetHeading: " + Math.toDegrees( leftTargetHeading ) );
+//		System.out.println( "rightTargetHeading: " + Math.toDegrees( rightTargetHeading ) );
 
-		double targetHubAngle = angle - Math.abs( rotate ) * angle; // Angle.norm( Math.atan2( moveY, moveX ) ); // 0 is straight, pi/2 (90) is perp (to the right)
+		double targetHubAngle = heading - Math.abs( rotate ) * heading; // Angle.norm( Math.atan2( moveY, moveX ) ); // 0 is straight, pi/2 (90) is perp (to the right)
 		double power = sqrt( moveX * moveX + moveY * moveY - (moveX * moveX * moveY * moveY) );
 
 		double leftRotation = getWheelRotation( topLeft, bottomLeft, AngleUnit.RADIANS );
@@ -207,28 +211,35 @@ public class DifferentialSwerveDrive implements Drive {
 
 //		double angularPower = rotate * storedMaxAngularPow;
 
-		double leftTurnAngle = targetHubAngle % Math.PI - (leftRotation % Math.PI + TWO_PI) % Math.PI;
+		double leftTurnAngle = leftTargetHeading % Math.PI - (leftRotation % Math.PI + TWO_PI) % Math.PI;
 
 		if( Math.abs( leftTurnAngle ) > Math.PI / 2 )
 			leftTurnAngle -= Math.signum( leftTurnAngle ) * Math.PI;
 		double leftTurnPower = 2 * leftTurnAngle / Math.PI;
 
-		double rightTurnAngle = targetHubAngle % Math.PI - (rightRotation % Math.PI + TWO_PI) % Math.PI;
+		double rightTurnAngle = rightTargetHeading % Math.PI - (rightRotation % Math.PI + TWO_PI) % Math.PI;
 		if( Math.abs( rightTurnAngle ) > Math.PI / 2 )
 			rightTurnAngle -= Math.signum( rightTurnAngle ) * Math.PI;
 		double rightTurnPower = 2 * rightTurnAngle / Math.PI;
 
-		boolean leftForward = valueBetweenAB( leftRotation, targetHubAngle - Math.toRadians( 90 ), targetHubAngle + Math.toRadians( 90 ), false ) || valueBetweenAB( leftRotation, targetHubAngle + Math.toRadians( 270 ), targetHubAngle + Math.toRadians( 450 ), false );
-		boolean rightForward = valueBetweenAB( rightRotation, targetHubAngle - Math.toRadians( 90 ), targetHubAngle + Math.toRadians( 90 ), false ) || valueBetweenAB( rightRotation, targetHubAngle + Math.toRadians( 270 ), targetHubAngle + Math.toRadians( 450 ), false );
-
-		// sets direction of power
 		leftRotation = (leftRotation % TWO_PI + TWO_PI) % TWO_PI;
 		rightRotation = (rightRotation % TWO_PI + TWO_PI) % TWO_PI;
+
+		boolean leftForward = valueBetweenAB( leftRotation, leftTargetHeading - Math.toRadians( 90 ), leftTargetHeading + Math.toRadians( 90 ), false ) || valueBetweenAB( leftRotation, leftTargetHeading + Math.toRadians( 270 ), leftTargetHeading + Math.toRadians( 450 ), false );
+		boolean rightForward = valueBetweenAB( rightRotation, rightTargetHeading - Math.toRadians( 90 ), rightTargetHeading + Math.toRadians( 90 ), false ) || valueBetweenAB( rightRotation, rightTargetHeading + Math.toRadians( 270 ), rightTargetHeading + Math.toRadians( 450 ), false );
+
+		// sets direction of power
 		double leftDrivePow = power * (leftForward ? 1 : -1);
 		double rightDrivePow = power * (rightForward ? 1 : -1);
 
-		leftDrivePow += rotate * (leftForward ? 1 : -1);
-		rightDrivePow -= rotate * (rightForward ? 1 : -1);
+//		System.out.println( "leftDrivePow: " + leftDrivePow );
+//		System.out.println( "rightDrivePow: " + rightDrivePow );
+//
+//		System.out.println( "leftForward: " + Math.toDegrees(leftTargetHeading - Math.toRadians( 90 )) + " < " + Math.toDegrees(leftRotation) + " < " + Math.toDegrees(leftTargetHeading + Math.toRadians( 90 )) + ": " + leftForward );
+//		System.out.println( "rightForward: " + Math.toDegrees(rightTargetHeading - Math.toRadians( 90 )) + " < " + Math.toDegrees(rightRotation) + " < " + Math.toDegrees(rightTargetHeading + Math.toRadians( 90 )) + ": " + rightForward );
+
+//		leftDrivePow += rotate * (leftForward ? 1 : -1);
+//		rightDrivePow -= rotate * (rightForward ? 1 : -1);
 
 		// just for rotating (aka turning the small wheel)
 //		double leftRotatePow = angularPower * normalizeAngle( /*targetRotateAngle*/ -leftRotation );
@@ -236,7 +247,7 @@ public class DifferentialSwerveDrive implements Drive {
 
 //		System.out.println( "targetHubAngle: " + Math.toDegrees( targetHubAngle ) + "°" );
 //		System.out.println( "rotation (l, r): " + Math.toDegrees( leftRotation ) + ", " + Math.toDegrees( rightRotation ) );
-//		System.out.println( "turn angle (l, r): " + decimalFormat.format( Math.toDegrees( leftTurnAngle ) ) + ", " + decimalFormat.format( Math.toDegrees( rightTurnAngle ) ) );
+//		System.out.println( "turn heading (l, r): " + decimalFormat.format( Math.toDegrees( leftTurnAngle ) ) + ", " + decimalFormat.format( Math.toDegrees( rightTurnAngle ) ) );
 //		System.out.println( "turn power (l, r): " + leftTurnPower + ", " + rightTurnPower );
 ////		System.out.println( "right turn power (real, test 1-3): " + rightTurnPower + ", " + testPower1 + ", " + testPower2 + ", " + testPower3 );
 //		System.out.println( "drive power (l, r): " + leftDrivePow + ", " + rightDrivePow );
@@ -255,7 +266,6 @@ public class DifferentialSwerveDrive implements Drive {
 		for( int i = 0; i < powers.length; i++ )
 			if( Math.abs( powers[i] ) > max )
 				max = Math.abs( powers[i] );
-
 
 		topLeft.setPower( powers[0] / max );
 		bottomLeft.setPower( powers[1] / max );

@@ -4,7 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Controller/Controller.iml" filepath="$PROJECT_DIR$/Controller/Controller.iml" />
       <module fileurl="file://$PROJECT_DIR$/TeamCode/TeamCode.iml" filepath="$PROJECT_DIR$/TeamCode/TeamCode.iml" />
-      <module fileurl="file://$PROJECT_DIR$/virtual_robot.iml" filepath="$PROJECT_DIR$/virtual_robot.iml" />
+      <module fileurl="file://$PROJECT_DIR$/virtual-robot.iml" filepath="$PROJECT_DIR$/virtual-robot.iml" />
     </modules>
   </component>
 </project>
