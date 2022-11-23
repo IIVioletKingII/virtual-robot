@@ -40,15 +40,13 @@ public class DifferentialSwerveDrive implements Drive {
 	public double storedMaxAngularVel;
 
 	public double wheelBase;
-	/**
-	 * sussy balls
-	 */
+
 	int ticksInRotation = 250;
 
 	double driveWeight = 1;
 	double rotateWeight = 1;
 
-	double headingWeight = 1;
+	double headingWeight = 1.0 / 3;
 
 	final double TWO_PI = 2 * Math.PI;
 
@@ -187,24 +185,30 @@ public class DifferentialSwerveDrive implements Drive {
 
 	private void move( Vector2d move, double rotate ) {
 		DecimalFormat decimalFormat = new DecimalFormat( "0.000" );
-		rotate /= 2;
-		rotate = 0;
+//		rotate /= 2;
+//		rotate = 0;
 
 		double moveX = move.getX( );
 		double moveY = move.getY( );
 
-		double heading = move.angle( );
+		double heading = move.angle( ); // between 0 & 360 deg in radians
 
-		System.out.println( "heading: " + Math.toDegrees( heading ) );
+		double power = sqrt( moveX * moveX + moveY * moveY - (moveX * moveX * moveY * moveY) );
+		if( power == 0 )
+			heading = 0;
 
-		// if target heading
-		double leftTargetHeading = heading - heading * Math.abs( rotate );
-		double rightTargetHeading = heading + heading * Math.abs( rotate );
+//		System.out.println( "heading: " + Math.toDegrees( heading ) );
+
+		// if target heading is around 0 or 180 should result in angle of 0
+		// if
+		double a = (heading > Math.PI ? -1 : 1) * Math.PI / 4 * rotate;
+		a = 0;
+		double leftTargetHeading = heading - a;
+		double rightTargetHeading = heading + a;
 //		System.out.println( "leftTargetHeading: " + Math.toDegrees( leftTargetHeading ) );
 //		System.out.println( "rightTargetHeading: " + Math.toDegrees( rightTargetHeading ) );
 
-		double targetHubAngle = heading - Math.abs( rotate ) * heading; // Angle.norm( Math.atan2( moveY, moveX ) ); // 0 is straight, pi/2 (90) is perp (to the right)
-		double power = sqrt( moveX * moveX + moveY * moveY - (moveX * moveX * moveY * moveY) );
+//		double targetHubAngle = heading - Math.abs( rotate ) * heading; // Angle.norm( Math.atan2( moveY, moveX ) ); // 0 is straight, pi/2 (90) is perp (to the right)
 
 		double leftRotation = getWheelRotation( topLeft, bottomLeft, AngleUnit.RADIANS );
 		double rightRotation = getWheelRotation( topRight, bottomRight, AngleUnit.RADIANS );
@@ -212,7 +216,6 @@ public class DifferentialSwerveDrive implements Drive {
 //		double angularPower = rotate * storedMaxAngularPow;
 
 		double leftTurnAngle = leftTargetHeading % Math.PI - (leftRotation % Math.PI + TWO_PI) % Math.PI;
-
 		if( Math.abs( leftTurnAngle ) > Math.PI / 2 )
 			leftTurnAngle -= Math.signum( leftTurnAngle ) * Math.PI;
 		double leftTurnPower = 2 * leftTurnAngle / Math.PI;
@@ -225,6 +228,7 @@ public class DifferentialSwerveDrive implements Drive {
 		leftRotation = (leftRotation % TWO_PI + TWO_PI) % TWO_PI;
 		rightRotation = (rightRotation % TWO_PI + TWO_PI) % TWO_PI;
 
+		// true if the wheel is within +-90 degrees of the target heading
 		boolean leftForward = valueBetweenAB( leftRotation, leftTargetHeading - Math.toRadians( 90 ), leftTargetHeading + Math.toRadians( 90 ), false ) || valueBetweenAB( leftRotation, leftTargetHeading + Math.toRadians( 270 ), leftTargetHeading + Math.toRadians( 450 ), false );
 		boolean rightForward = valueBetweenAB( rightRotation, rightTargetHeading - Math.toRadians( 90 ), rightTargetHeading + Math.toRadians( 90 ), false ) || valueBetweenAB( rightRotation, rightTargetHeading + Math.toRadians( 270 ), rightTargetHeading + Math.toRadians( 450 ), false );
 
@@ -238,8 +242,30 @@ public class DifferentialSwerveDrive implements Drive {
 //		System.out.println( "leftForward: " + Math.toDegrees(leftTargetHeading - Math.toRadians( 90 )) + " < " + Math.toDegrees(leftRotation) + " < " + Math.toDegrees(leftTargetHeading + Math.toRadians( 90 )) + ": " + leftForward );
 //		System.out.println( "rightForward: " + Math.toDegrees(rightTargetHeading - Math.toRadians( 90 )) + " < " + Math.toDegrees(rightRotation) + " < " + Math.toDegrees(rightTargetHeading + Math.toRadians( 90 )) + ": " + rightForward );
 
-//		leftDrivePow += rotate * (leftForward ? 1 : -1);
-//		rightDrivePow -= rotate * (rightForward ? 1 : -1);
+		// doesn't rotate the correct way sometimes
+		System.out.println( "leftTargetHeading: " + Math.toDegrees( leftTargetHeading ) );
+		System.out.println( "leftForward: " + leftForward );
+		leftDrivePow += rotate * headingWeight * ((leftForward && valueBetweenAB( leftTargetHeading, Math.PI / 2, 3 * Math.PI / 2, false )) || (!leftForward && valueBetweenAB( leftTargetHeading, 0, Math.PI / 2, true )) || (!leftForward && valueBetweenAB( leftTargetHeading, 3 * Math.PI / 2, TWO_PI, true )) ? -1 : 1);
+		rightDrivePow -= rotate * headingWeight * ((rightForward && valueBetweenAB( rightTargetHeading, Math.PI / 2, 3 * Math.PI / 2, false )) || (!rightForward && valueBetweenAB( rightTargetHeading, 0, Math.PI / 2, true )) || (!rightForward && valueBetweenAB( rightTargetHeading, 3 * Math.PI / 2, TWO_PI, true )) ? -1 : 1);
+//		rightDrivePow -= rotate; // * headingWeight * (rightForward ? 1 : -1);
+// ; //
+		/*
+
+		test with target angle, current angle, and averages
+
+		turn left
+		→ ↑
+
+		Normal direction
+		↗ ↗
+
+		turn right
+		↑ →
+
+		 */
+
+
+		// multiply power between 90 & 0 degrees (parallel and perpendicular)
 
 		// just for rotating (aka turning the small wheel)
 //		double leftRotatePow = angularPower * normalizeAngle( /*targetRotateAngle*/ -leftRotation );
@@ -272,12 +298,6 @@ public class DifferentialSwerveDrive implements Drive {
 
 		topRight.setPower( powers[2] / max );
 		bottomRight.setPower( powers[3] / max );
-
-//		topLeft.setPower( (-leftDrivePow + leftTurnPower) / denom );
-//		bottomLeft.setPower( (leftDrivePow + leftTurnPower) / denom );
-//
-//		topRight.setPower( (rightDrivePow + rightTurnPower) / denom );
-//		bottomRight.setPower( (-rightDrivePow + rightTurnPower) / denom );
 	}
 
 	public static String format( double input, double decimals ) {
